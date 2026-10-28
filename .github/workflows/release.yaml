@@ -1,0 +1,36 @@
+name: Publish to NuGet
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish, e.g. v1.0.4
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ inputs.tag || github.event.release.tag_name }}
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Pack
+        env:
+          TAG_NAME: ${{ inputs.tag || github.event.release.tag_name }}
+        run: dotnet pack Fint.Relation.Model/Fint.Relation.Model.csproj -c Release -o artifacts -p:PackageVersion="${TAG_NAME#v}"
+
+      - name: Publish
+        env:
+          NUGET_KEY: ${{ secrets.NUGET_KEY }}
+        run: dotnet nuget push "artifacts/*.nupkg" --api-key "$NUGET_KEY" --source https://api.nuget.org/v3/index.json
