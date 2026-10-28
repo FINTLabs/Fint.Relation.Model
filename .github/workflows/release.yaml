@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   publish:
@@ -30,7 +31,13 @@ jobs:
           TAG_NAME: ${{ inputs.tag || github.event.release.tag_name }}
         run: dotnet pack Fint.Relation.Model/Fint.Relation.Model.csproj -c Release -o artifacts -p:PackageVersion="${TAG_NAME#v}"
 
+      - name: NuGet login
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
       - name: Publish
         env:
-          NUGET_KEY: ${{ secrets.NUGET_KEY }}
-        run: dotnet nuget push "artifacts/*.nupkg" --api-key "$NUGET_KEY" --source https://api.nuget.org/v3/index.json
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: dotnet nuget push "artifacts/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json
